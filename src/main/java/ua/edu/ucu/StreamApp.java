@@ -4,11 +4,12 @@ import ua.edu.ucu.stream.*;
 
 public class StreamApp {
 
-    public static void main(String[] args) {
+   /* public static void main(String[] args) {
         int [] arr = {0,1,2,3};
 
     }
-
+*/
+   /*
     public static int streamOperations(IntStream intStream) {
         //IntStream intStream = AsIntStream.of(-1, 0, 1, 2, 3); // input values
         int res = intStream
@@ -18,6 +19,7 @@ public class StreamApp {
                 .reduce(0, (sum, x) -> sum += x); // 42
         return res;
     }
+    */
 
     public static int[] streamToArray(IntStream intStream) {        
         int[] intArr = intStream.toArray();

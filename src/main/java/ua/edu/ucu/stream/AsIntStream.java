@@ -2,26 +2,53 @@ package ua.edu.ucu.stream;
 
 import ua.edu.ucu.function.*;
 
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.function.Function;
+import java.util.*;
 
 public class AsIntStream implements IntStream {
+
 
     InBuf inside;
     Pipeline operations;
 
     private class Pipeline{
-        LinkedList operationsList;
+        LinkedList<MyIntFunction> operationsList;
+
+        Integer iteratorPosition;
 
         Pipeline(){
             this.operationsList = new LinkedList<>();
+            this.iteratorPosition = 0 ;
         }
 
-        private void extendList(Function newOperation){
+        private boolean isEmpty(){
+            return this.operationsList.isEmpty();
+        }
+
+        private void resetIterator(){
+            this.iteratorPosition = 0;
+        }
+
+        private void add(MyIntFunction newOperation){
             this.operationsList.add(newOperation);
         }
 
+        private ArrayList<Integer> applyAll(){
+            //performs all nonterminal operations in task-list at once
+            Integer arg = null;
+            ArrayList <Integer> resultStream = new ArrayList<>();
+            while (inside.hasNext()){
+                arg = inside.getNext();
+                for (MyIntFunction func: operationsList){
+                    if (func.getClass() == IntPredicate.class){
+                        arg = (func.test(arg) ? arg : null );
+                        if (arg == null) break;
+                    }
+                    else arg = func.apply(arg); //unary operator
+                }
+                resultStream.add(arg);
+            }
+            return resultStream;
+        }
     }
 
     private class InBuf {
@@ -30,11 +57,11 @@ public class AsIntStream implements IntStream {
 
         ArrayList<Integer> innerBuffer;
 
-        Long iteratorPosition; // instead of "Iterator" interface for buffered use
-
-
+        Integer iteratorPosition; // instead of "Iterator" interface for buffered use
 
         InBuf(int ... args){
+            this.innerBuffer = new ArrayList<Integer>();
+            this.iteratorPosition = new Integer(0);
             for (int el: args){
                 this.innerBuffer.add(el);
             }
@@ -51,14 +78,18 @@ public class AsIntStream implements IntStream {
         }
 
         private  boolean hasNext(){
-            throw new UnsupportedOperationException("Not supported yet.");
+            return iteratorPosition < innerBuffer.size();
             //To change body of generated methods, choose Tools | Templates.
         }
 
         private Integer getNext(){
-            throw new UnsupportedOperationException("Not supported yet.");
+            iteratorPosition++;
+            return innerBuffer.get( iteratorPosition-1);
+            //throw new UnsupportedOperationException("Not supported yet.");
             //To change body of generated methods, choose Tools | Templates.
         }
+
+
     }
 
 
@@ -97,7 +128,8 @@ public class AsIntStream implements IntStream {
 
     @Override
     public long count() {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        return this.inside.innerBuffer.size();
+        //throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
     @Override
@@ -107,13 +139,19 @@ public class AsIntStream implements IntStream {
 
     @Override
     public IntStream filter(IntPredicate predicate) {
-        this.operations.extendList((Function) predicate);
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        //non-terminal
+        this.operations.add(predicate);
+        return this;
+        //throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
     @Override
     public void forEach(IntConsumer action) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        //terminal
+        Collection<? extends Integer> preResults = this.operations.applyAll();
+        for (Object preResult : preResults) {
+            action.accept((Integer) preResult);
+        }
     }
 
     @Override
