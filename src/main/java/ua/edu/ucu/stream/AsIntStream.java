@@ -148,7 +148,7 @@ public class AsIntStream implements IntStream {
     @Override
     public void forEach(IntConsumer action) {
         //terminal
-        Collection<? extends Integer> preResults = this.operations.applyAll();
+        Collection<? super Integer> preResults = this.operations.applyAll();
         for (Object preResult : preResults) {
             action.accept((Integer) preResult);
         }
@@ -171,7 +171,14 @@ public class AsIntStream implements IntStream {
 
     @Override
     public int[] toArray() {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        int [] resArr = new int[this.inside.innerBuffer.size()];
+        int i = 0;
+        for (Integer el:this.inside.innerBuffer){
+            resArr[i] = el;
+            i++;
+        }
+        return resArr;
+       // throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
 }
