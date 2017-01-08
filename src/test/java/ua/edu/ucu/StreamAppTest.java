@@ -19,7 +19,7 @@ public class StreamAppTest {
         intStream = AsIntStream.of(intArr);
     }
 
-    /*
+
     @Test
     public void testStreamOperations() {
         System.out.println("streamOperations");
@@ -27,7 +27,7 @@ public class StreamAppTest {
         int result = StreamApp.streamOperations(intStream);
         assertEquals(expResult, result);        
     }
-    */
+
 
     @Test
     public void testStreamToArray() {
