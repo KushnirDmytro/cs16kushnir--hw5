@@ -1,5 +1,10 @@
 package ua.edu.ucu.function;
 
-public interface IntPredicate {
+import java.util.function.Function;
+
+public interface IntPredicate{
+    //Represents a predicate (Boolean-valued function) of one int-valued argument.
+    //int -> boolean
     boolean test(int value);
+
 }
