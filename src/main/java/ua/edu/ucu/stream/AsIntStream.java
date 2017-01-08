@@ -6,12 +6,11 @@ import java.util.*;
 
 public class AsIntStream implements IntStream {
 
-
     InBuf inside;
     Pipeline operations;
 
     private class Pipeline{
-        LinkedList<MyIntFunction> operationsList;
+        LinkedList<MySuperIntFunction> operationsList;
 
         Integer iteratorPosition;
 
@@ -28,7 +27,7 @@ public class AsIntStream implements IntStream {
             this.iteratorPosition = 0;
         }
 
-        private void add(MyIntFunction newOperation){
+        private void add(MySuperIntFunction newOperation){
             this.operationsList.add(newOperation);
         }
 
@@ -38,12 +37,12 @@ public class AsIntStream implements IntStream {
             ArrayList <Integer> resultStream = new ArrayList<>();
             while (inside.hasNext()){
                 arg = inside.getNext();
-                for (MyIntFunction func: operationsList){
-                    if (func.getClass() == IntPredicate.class){
-                        arg = (func.test(arg) ? arg : null );
+                for (MySuperIntFunction func: operationsList){
+                    if (func instanceof IntPredicate){
+                        arg = ( (IntPredicate)func.(arg)  ? arg : null );
                         if (arg == null) break;
                     }
-                    else arg = func.apply(arg); //unary operator
+                    else arg = (IntUnaryOperator)func.apply(arg); //unary operator
                 }
                 resultStream.add(arg);
             }
