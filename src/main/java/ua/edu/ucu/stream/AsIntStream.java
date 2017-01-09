@@ -2,59 +2,56 @@ package ua.edu.ucu.stream;
 
 import ua.edu.ucu.function.*;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.ListIterator;
 
 public class AsIntStream implements IntStream {
 
     InBuf inside;
     Operations operations;
-
     DecoratorPipeline pipeline;
 
     private class DecoratorPipeline {
         DecoratorPipeline composition;
         MySuperIntFunction operationPerform;
 
-        private DecoratorPipeline(){
+        private DecoratorPipeline ( ) {
         }
 
-        private DecoratorPipeline(DecoratorPipeline toCompose){
+        private DecoratorPipeline (DecoratorPipeline toCompose) {
             this.composition = toCompose;
         }
 
-        private void addOperation(MySuperIntFunction function){
-            pipeline = new DecoratorPipeline(this);
+        private void addOperation (MySuperIntFunction function) {
+            pipeline = new DecoratorPipeline ( this );
             pipeline.operationPerform = function;
         }
 
-        private int[] getResult(int ... args){
+        private int[] getResult (int... args) {
             if (this.operationPerform == null) return args;
-            int [] result;
-            int size = 0;
+            int[] result;
 
             args = this.composition.getResult ( args );
             //digging into pipeline
 
 
-            for (int arg: args) {
+            for ( int arg : args ) {
 
-                if (operationPerform instanceof IntPredicate){
-                    if (((IntPredicate) operationPerform).test(arg)){
+                if (operationPerform instanceof IntPredicate) {
+                    if (((IntPredicate) operationPerform).test ( arg )) {
                         result = new int[1];
                         result[0] = arg;
                         return result;
-                    }
-                    else return new int[0];
-                }
-
-                else if (operationPerform instanceof IntUnaryOperator){
+                    } else return new int[0];
+                } else if (operationPerform instanceof IntUnaryOperator) {
                     result = new int[1];
-                    result[0] = ((IntUnaryOperator) operationPerform).apply(arg);
+                    result[0] = ((IntUnaryOperator) operationPerform).apply ( arg );
                     return result;
-                }
-
-                else if (operationPerform instanceof IntToIntStreamFunction){
-                    return ((IntToIntStreamFunction) operationPerform).applyAsIntStream(arg).toArray();
+                    //  return new int[] = {((IntUnaryOperator) operationPerform).apply ( arg )};
+                } else if (operationPerform instanceof IntToIntStreamFunction) {
+                    return ((IntToIntStreamFunction) operationPerform).applyAsIntStream ( arg ).toArray ( );
                 }
 
             }
@@ -63,43 +60,42 @@ public class AsIntStream implements IntStream {
     }
 
 
-
     private class Operations {
-        LinkedList<MySuperIntFunction> operationsList;
+        List <MySuperIntFunction> operationsList;
 
         Integer iteratorPosition;
 
-        Operations(){
-            this.operationsList = new LinkedList<>();
-            this.iteratorPosition = 0 ;
-        }
-
-        private boolean isEmpty(){
-            return this.operationsList.isEmpty();
-        }
-
-        private void resetIterator(){
+        Operations ( ) {
+            this.operationsList = new LinkedList <> ( );
             this.iteratorPosition = 0;
         }
 
-        private void add(MySuperIntFunction newOperation){
-            this.operationsList.add(newOperation);
+        private boolean isEmpty ( ) {
+            return this.operationsList.isEmpty ( );
+        }
+
+        private void resetIterator ( ) {
+            this.iteratorPosition = 0;
+        }
+
+        private void add (MySuperIntFunction newOperation) {
+            this.operationsList.add ( newOperation );
         }
 
 
-}
+    }
 
 
-    private void buildPipeline(){
-        ListIterator<MySuperIntFunction> functionsIter = operations.operationsList.listIterator();
+    private void buildPipeline ( ) {
+        ListIterator <MySuperIntFunction> functionsIter = operations.operationsList.listIterator ( );
 
-        pipeline = new DecoratorPipeline();
+        pipeline = new DecoratorPipeline ( );
 
-        if (!functionsIter.hasNext())
+        if (!functionsIter.hasNext ( ))
             return;
 
-        while (functionsIter.hasNext()){
-            pipeline.addOperation(functionsIter.next());
+        while ( functionsIter.hasNext ( ) ) {
+            pipeline.addOperation ( functionsIter.next ( ) );
         }
 
     }
@@ -107,7 +103,7 @@ public class AsIntStream implements IntStream {
     private LinkedList <Integer> applyAll ( ) {
         buildPipeline ( );
 
-        ListIterator <Integer> streamIter = inside.innerBuffer.listIterator ( );
+        ListIterator <Integer> streamIter = (ListIterator <Integer>) inside.innerBuffer.listIterator ( );
         LinkedList <Integer> result = new LinkedList <> ( );
 
         int rawResult[];
@@ -123,6 +119,178 @@ public class AsIntStream implements IntStream {
 
         return result;
     }
+
+    private class InBuf {
+        // as I think a good solution for a future optimisation
+        // of an order of such operations
+
+        List <? super Integer> innerBuffer;
+
+        Integer iteratorPosition; // instead of "Iterator" interface for buffered use
+
+        InBuf (int... args) {
+            this.innerBuffer = new LinkedList <> ( );
+            this.iteratorPosition = new Integer ( 0 );
+            for ( int el : args ) {
+                this.innerBuffer.add ( el );
+            }
+        }
+
+        private void insertBuf (int[] arr, int position) {
+            for ( Integer el : arr ) {
+                innerBuffer.add ( position++, el );
+            }
+        }
+
+        private int cleanBuf ( ) {
+            int size = innerBuffer.size ( );
+            innerBuffer.clear ( );
+            return size;
+        }
+
+        private void add (int el) {
+            this.innerBuffer.add ( el );
+        }
+
+        private boolean hasNext ( ) {
+            return iteratorPosition < innerBuffer.size ( );
+        }
+
+        private Integer getNext ( ) {
+            iteratorPosition++;
+            return (Integer) innerBuffer.get ( iteratorPosition - 1 );
+        }
+
+    }
+
+
+    private IntStream concat (IntStream newIntStream) {
+        int[] contain = newIntStream.toArray ( );
+        for ( int el : contain ) {
+            this.inside.innerBuffer.add ( el );
+        }
+        return this;
+    }
+
+    private AsIntStream ( ) { //has private constructor...
+        //looks like never happens to be instantiated? functional...
+        this.inside = new InBuf ( );
+        this.operations = new Operations ( );
+    }
+
+    public static IntStream of (int... values) {
+        //makes a stream for future needs, serves instead of a cunstructor
+        AsIntStream newAsIntStream = new AsIntStream ( );
+        for ( int el : values ) {
+            newAsIntStream.inside.add ( el );
+        }
+        return newAsIntStream;
+    }
+
+
+    private Collection <? super Integer> terminator ( ) {
+        //instead of 1000 checks
+
+        Collection <? super Integer> preResults = this.applyAll ( );
+
+        if (preResults.isEmpty ( ))
+            throw new IllegalArgumentException ( );
+
+        return preResults;
+    }
+
+
+    @Override
+    public Double average ( ) { //terminal & dependant
+        final long[] sum = {0};
+        final long[] counter = {0l};
+
+        forEach ( x -> {
+            counter[0]++;
+            sum[0] += x;
+        } );
+
+        return (double) (sum[0] / counter[0]);
+    }
+
+
+    @Override
+    public Integer min ( ) {//terminal & dependant
+        return reduce ( 0, (min, x) -> (min < x) ? min : x );
+    }
+
+    @Override
+    public Integer max ( ) {//terminal & dependant
+        return reduce ( 0, (max, x) -> (max > x) ? max : x );
+    }
+
+    @Override
+    public long count ( ) { //terminal & dependant
+        final long[] counter = {0l};
+        forEach ( x -> counter[0]++ );
+        return counter[0];
+    }
+
+    @Override
+    public Integer sum ( ) { //terminal & dependant
+        return reduce ( 0, (sum, x) -> sum += x );
+    }
+
+    @Override
+    public IntStream filter (IntPredicate predicate) { //non-terminal
+        this.operations.add ( predicate );
+        return this;
+    }
+
+    @Override
+    public IntStream flatMap (IntToIntStreamFunction func) { //non-terminal
+        this.operations.add ( func );
+        return this;
+    }
+
+    @Override
+    public IntStream map (IntUnaryOperator mapper) { //non-terminal
+        this.operations.add ( mapper );
+        return this;
+    }
+
+    @Override
+    public void forEach (IntConsumer action) { //terminal
+        Collection <? super Integer> preResults = terminator ( );
+        for ( Object preResult : preResults ) {
+            action.accept ( (Integer) preResult );
+        }
+    }
+
+
+    @Override
+    public int reduce (int identity, IntBinaryOperator op) { //terminal
+
+        Collection <? super Integer> preResults = terminator ( );
+
+        for ( Object preResult : preResults ) {
+            identity = op.apply ( identity, (Integer) preResult );
+        }
+        return identity;
+    }
+
+    @Override
+    public int[] toArray ( ) {
+        int[] resArr = new int[this.inside.innerBuffer.size ( )];
+        int i = 0;
+        for ( Object el : this.inside.innerBuffer ) {
+            resArr[i] = (int) el;
+            i++;
+        }
+        return resArr;
+    }
+
+}
+
+
+//preserved for the future generations
+
+
 
 /*
 
@@ -181,146 +349,3 @@ public class AsIntStream implements IntStream {
         }
     }
 */
-    private class InBuf {
-        // as I think a good solution for a future optimisation
-        // of an order of such operations
-
-        LinkedList<Integer> innerBuffer;
-
-        Integer iteratorPosition; // instead of "Iterator" interface for buffered use
-
-        InBuf(int ... args){
-            this.innerBuffer = new LinkedList<>();
-            this.iteratorPosition = new Integer(0);
-            for (int el: args){
-                this.innerBuffer.add(el);
-            }
-        }
-
-        private void  insertBuf(int[] arr, int position){
-            for (Integer el: arr){
-                innerBuffer.add(position++, el);
-            }
-        }
-
-        private int cleanBuf(){
-            int size = innerBuffer.size();
-            innerBuffer.clear();
-            return size;
-        }
-
-        private void add(int el){
-            this.innerBuffer.add(el);
-        }
-
-        private  boolean hasNext(){
-            return iteratorPosition < innerBuffer.size();
-        }
-
-        private Integer getNext(){
-            iteratorPosition++;
-            return innerBuffer.get( iteratorPosition-1);
-        }
-
-    }
-
-
-    private IntStream concat(IntStream newIntStream){
-        int [] contain = newIntStream.toArray();
-        for (int el: contain){
-            this.inside.innerBuffer.add(el);
-        }
-        return this;
-    }
-
-    private AsIntStream() { //has private constructor...
-        //looks like never happens to be instantiated? functional...
-        this.inside = new InBuf();
-        this.operations = new Operations();
-    }
-
-    public static IntStream of(int... values) {
-        //makes a stream for future needs, serves instead of a cunstructor
-        AsIntStream newAsIntStream = new AsIntStream();
-        for (int el: values){
-            newAsIntStream.inside.add(el);
-        }
-        return newAsIntStream;
-    }
-
-
-    @Override
-    public Double average() {
-        throw new UnsupportedOperationException("Not supported yet.");
-        //To change body of generated methods, choose Tools | Templates.
-    }
-
-    @Override
-    public Integer max() {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-    }
-
-    @Override
-    public Integer min() {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-    }
-
-    @Override
-    public long count() {
-        return this.inside.innerBuffer.size();
-        //throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-    }
-
-    @Override
-    public Integer sum() {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-    }
-
-    @Override
-    public IntStream filter(IntPredicate predicate) { //non-terminal
-        this.operations.add(predicate);
-        return this;
-    }
-
-    @Override
-    public void forEach(IntConsumer action) { //terminal
-        Collection<? super Integer> preResults = this.applyAll();
-        for (Object preResult : preResults) {
-            action.accept((Integer) preResult);
-        }
-    }
-
-    @Override
-    public IntStream map(IntUnaryOperator mapper) { //non-terminal
-        this.operations.add(mapper);
-        return this;
-    }
-
-    @Override
-    public IntStream flatMap(IntToIntStreamFunction func) { //non-terminal
-        this.operations.add(func);
-        return this;
-    }
-
-    @Override
-    public int reduce(int identity, IntBinaryOperator op) { //terminal
-        Collection<? super Integer> preResults = this.applyAll();
-        for (Object preResult : preResults) {
-            identity = op.apply(identity, (int)((Integer) preResult));
-        }
-        return identity;
-    }
-
-    @Override
-    public int[] toArray() {
-        int [] resArr = new int[this.inside.innerBuffer.size()];
-        int i = 0;
-        for (Integer el:this.inside.innerBuffer){
-            resArr[i] = el;
-            i++;
-        }
-        return resArr;
-       // throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-    }
-
-}
