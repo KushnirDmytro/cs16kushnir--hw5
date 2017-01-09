@@ -31,27 +31,23 @@ public class AsIntStream implements IntStream {
 
         private int[] getResult (int... args) {
             if (this.operationPerform == null) return args;
-            int[] result;
 
             args = this.composition.getResult ( args );
             //digging into pipeline
-
 
             for ( int arg : args ) {
 
                 if (operationPerform instanceof IntPredicate) {
                     if (((IntPredicate) operationPerform).test ( arg )) {
-                        result = new int[1];
-                        result[0] = arg;
-                        return result;
+                        return new int[]{arg};
                     } else return new int[0];
+
                 } else if (operationPerform instanceof IntUnaryOperator) {
-                    result = new int[1];
-                    result[0] = ((IntUnaryOperator) operationPerform).apply ( arg );
-                    return result;
-                    //  return new int[] = {((IntUnaryOperator) operationPerform).apply ( arg )};
+                    return new int[] {((IntUnaryOperator) operationPerform).apply ( arg )};
+
                 } else if (operationPerform instanceof IntToIntStreamFunction) {
                     return ((IntToIntStreamFunction) operationPerform).applyAsIntStream ( arg ).toArray ( );
+
                 }
 
             }
