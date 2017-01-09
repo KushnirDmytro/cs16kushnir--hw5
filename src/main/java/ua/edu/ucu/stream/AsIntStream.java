@@ -31,12 +31,17 @@ public class AsIntStream implements IntStream {
             if (this.operationPerform == null) return args;
             int [] result;
             int size = 0;
+
+            args = this.composition.getResult ( args );
+            //digging into pipeline
+
+
             for (int arg: args) {
 
                 if (operationPerform instanceof IntPredicate){
                     if (((IntPredicate) operationPerform).test(arg)){
                         result = new int[1];
-                        result[1] = arg;
+                        result[0] = arg;
                         return result;
                     }
                     else return new int[0];
@@ -44,7 +49,7 @@ public class AsIntStream implements IntStream {
 
                 else if (operationPerform instanceof IntUnaryOperator){
                     result = new int[1];
-                    result[1] = ((IntUnaryOperator) operationPerform).apply(arg);
+                    result[0] = ((IntUnaryOperator) operationPerform).apply(arg);
                     return result;
                 }
 
@@ -53,7 +58,7 @@ public class AsIntStream implements IntStream {
                 }
 
             }
-            return null;
+            return new int[0];
         }
     }
 
@@ -301,7 +306,7 @@ public class AsIntStream implements IntStream {
     public int reduce(int identity, IntBinaryOperator op) { //terminal
         Collection<? super Integer> preResults = this.applyAll();
         for (Object preResult : preResults) {
-            op.apply(identity, (Integer) preResult);
+            identity = op.apply(identity, (int)((Integer) preResult));
         }
         return identity;
     }
